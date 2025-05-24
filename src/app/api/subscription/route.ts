@@ -80,7 +80,7 @@ export async function GET(req: Request) {
 
     const user = await User.findOne({
       'subs_credentials.user_name': username
-    }).select('plan plan_expiry devices');
+    }).select('plan planExpiry devices');
 
     if (!user) {
       return NextResponse.json(
