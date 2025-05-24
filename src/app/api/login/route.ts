@@ -44,13 +44,13 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Validate device ID format
-    if (!user.devices.some(d => d.trim() === deviceId?.trim())) {
-      console.log('Device mismatch:', deviceId, 'User devices:', user.devices);
-      return NextResponse.json(
-        { code: 'DEVICE_MISMATCH', error: 'Device not registered' },
-        { status: 403, headers: corsHeaders }
-      );
-    }
+    // if (!user.devices.some(d => d.trim() === deviceId?.trim())) {
+    //   console.log('Device mismatch:', deviceId, 'User devices:', user.devices);
+    //   return NextResponse.json(
+    //     { code: 'DEVICE_MISMATCH', error: 'Device not registered' },
+    //     { status: 403, headers: corsHeaders }
+    //   );
+    // }
 
     // 4. Handle nested expiry date safely
     const planExpiry = user.other_preferences?.plan_expiry
