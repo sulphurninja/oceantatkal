@@ -99,7 +99,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       plan: user.plan,
-      plan_expiry: user.plan_expiry,
+      plan_expiry: user.planExpiry,
       devices: user.devices,
       isActive,
       remainingDays
