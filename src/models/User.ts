@@ -5,11 +5,10 @@ const userSchema = new mongoose.Schema({
     user_name: { type: String, required: true, unique: true },
     password: { type: String, required: true }
   },
-  other_preferences: {
-    plan: { type: String, enum: ['free', 'basic', 'premium'], default: 'free' },
-    plan_expiry: Date
-  },
-  devices: [String],
+  plan_expiry: { type: Date, required: true },
+  devices: { type: [String], default: [] },
+  isAdmin: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
 });
 
 export default mongoose.models.User || mongoose.model('User', userSchema);

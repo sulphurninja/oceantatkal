@@ -1,89 +1,60 @@
 import connectDB from '@/lib/mongoose';
 import User from '@/models/User';
+import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { NextRequest, NextResponse } from 'next/server';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
+export async function POST(req: Request) {
+  await connectDB();
 
-export async function POST(req: NextRequest) {
   try {
     const { username, password, deviceId } = await req.json();
-
-    // Connect to DB explicitly (in case connection drops)
-    await connectDB();
-
-    // 1. Find user with proper null check
     const user = await User.findOne({ 'subs_credentials.user_name': username });
+
     if (!user) {
-      console.log('User not found:', username);
       return NextResponse.json(
-        { code: 'INVALID_CREDENTIALS', error: 'User not found' },
-        { status: 401, headers: corsHeaders }
+        { error: 'Invalid credentials' },
+        { status: 401 }
+      );
+    }
+    if (user.plan_expiry < new Date()) {
+      return NextResponse.json(
+        { error: 'Subscription expired' },
+        { status: 403 }
       );
     }
 
-    // 2. Compare passwords safely
-    const validPass = await bcrypt.compare(
+    const validPassword = await bcrypt.compare(
       password,
       user.subs_credentials.password
-    ).catch((bcryptError) => {
-      console.error('Bcrypt compare error:', bcryptError);
-      return false;
-    });
+    );
 
-    if (!validPass) {
-      console.log('Invalid password for user:', username);
+    if (!validPassword) {
       return NextResponse.json(
-        { code: 'INVALID_CREDENTIALS', error: 'Invalid password' },
-        { status: 401, headers: corsHeaders }
+        { error: 'Invalid credentials' },
+        { status: 401 }
       );
     }
 
-    // 3. Validate device ID format
-    // if (!user.devices.some(d => d.trim() === deviceId?.trim())) {
-    //   console.log('Device mismatch:', deviceId, 'User devices:', user.devices);
-    //   return NextResponse.json(
-    //     { code: 'DEVICE_MISMATCH', error: 'Device not registered' },
-    //     { status: 403, headers: corsHeaders }
-    //   );
-    // }
+    // Device management
+    if (!user.devices.includes(device_id)) {
+      user.devices.push(device_id);
+      await user.save();
+    }
 
-    // 4. Handle nested expiry date safely
-    const planExpiry = user.other_preferences?.plan_expiry
-      ? new Date(user.other_preferences.plan_expiry).toISOString()
-      : new Date().toISOString();
-
-    return NextResponse.json(
-      {
-        plan: user.plan || 'free',
-        plan_expiry: planExpiry,
-        other_preferences: user.other_preferences
-      },
-      { status: 200, headers: corsHeaders }
-    );
-
-  } catch (error) {
-    // Improved error logging
-    console.error('Server error details:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : null,
-      timestamp: new Date().toISOString()
+    // Recheck expiry after potential updates
+    const isActive = user.plan_expiry > new Date();
+    return NextResponse.json({
+      success: true,
+      plan_expiry: user.plan_expiry,
+      isActive,
+      remainingDays: Math.ceil((user.plan_expiry.getTime() - Date.now()) / 86400000)
     });
 
+  } catch (error) {
+    console.error('Login error:', error);
     return NextResponse.json(
-      { code: 'SERVER_ERROR', error: 'Internal server error' },
-      { status: 500, headers: corsHeaders }
+      { error: 'Internal server error' },
+      { status: 500 }
     );
   }
-}
-
-export async function OPTIONS() {
-  return NextResponse.json(null, {
-    status: 204,
-    headers: corsHeaders
-  });
 }

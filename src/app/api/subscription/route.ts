@@ -4,11 +4,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const subscriptionSchema = z.object({
-  username: z.string().min(3),
-  plan: z.enum(['free', 'basic', 'premium']),
-  duration: z.number().min(1).max(12),
-  payment_method: z.enum(['stripe', 'razorpay']),
-  payment_id: z.string()
+  user_name: z.string().min(3),
+  device_id: z.string()
 });
 
 export async function POST(req: Request) {
@@ -25,9 +22,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const { username, plan, duration, payment_method, payment_id } = validation.data;
+    const { user_name, device_id } = validation.data;
+    const user = await User.findOne({ 'subs_credentials.user_name': user_name });
 
-    const user = await User.findOne({ 'subs_credentials.user_name': username });
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -35,74 +32,23 @@ export async function POST(req: Request) {
       );
     }
 
-    // Update root-level fields
-    user.plan = plan;
-    user.plan_expiry = new Date();
-    user.plan_expiry.setMonth(user.plan_expiry.getMonth() + duration);
+    // Verify device and subscription
+    if (!user.devices.includes(device_id)) {
+      return NextResponse.json(
+        { error: 'Device not authorized' },
+        { status: 403 }
+      );
+    }
 
-    // Track payment details
-    user.payment = {
-      method: payment_method,
-      transaction_id: payment_id,
-      date: new Date()
-    };
-
-    await user.save();
-
-    return NextResponse.json({
-      success: true,
-      plan: user.plan,
-      plan_expiry: user.plan_expiry
-    });
-
-  } catch (error) {
-    console.error('Subscription update error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    const isActive = user.plan_expiry > new Date();
+    const remainingDays = Math.ceil(
+      (user.plan_expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
     );
-  }
-}
-
-export async function GET(req: Request) {
-  await connectDB();
-
-  try {
-    const { searchParams } = new URL(req.url);
-    const username = searchParams.get('username');
-
-    if (!username) {
-      return NextResponse.json(
-        { error: 'username parameter is required' },
-        { status: 400 }
-      );
-    }
-
-    const user = await User.findOne({
-      'subs_credentials.user_name': username
-    }).select('plan planExpiry devices');
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    const isActive = user.planExpiry > new Date();
-    const remainingDays = isActive
-      ? Math.ceil(
-          (user.planExpiry.getTime() - Date.now()) /
-          (1000 * 60 * 60 * 24)
-        )
-      : 0;
 
     return NextResponse.json({
-      plan: user.plan,
-      plan_expiry: user.planExpiry,
-      devices: user.devices,
-      isActive:true,
-      remainingDays:30,
+      valid: isActive,
+      expiry: user.plan_expiry,
+      remaining_days: remainingDays > 0 ? remainingDays : 0
     });
 
   } catch (error) {

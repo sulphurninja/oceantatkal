@@ -10,11 +10,7 @@ const userSchema = z.object({
     user_name: z.string().min(3),
     password: z.string().min(6)
   }),
-  plan: z.enum(['free', 'basic', 'premium']),      // Add to root level
-  plan_expiry: z.string().datetime(),              // Add to root level
-  devices: z.array(z.string()).optional(),
-  isAdmin: z.boolean().optional().default(false),
-  other_preferences: z.object({}).optional()       // Mark as optional
+  isAdmin: z.boolean().optional().default(false)
 });
 
 export async function POST(req: Request) {
@@ -31,7 +27,7 @@ export async function POST(req: Request) {
     }
 
     // AFTER ✅
-    const { subs_credentials, plan, plan_expiry, devices, isAdmin } = validation.data;
+    const { subs_credentials, isAdmin } = validation.data;
 
     const exists = await User.findOne({
       'subs_credentials.user_name': subs_credentials.user_name
@@ -44,27 +40,29 @@ export async function POST(req: Request) {
       );
     }
 
+
     const hashedPassword = await bcrypt.hash(subs_credentials.password, 10);
+
+
+
+    const initialExpiry = new Date();
+    initialExpiry.setDate(initialExpiry.getDate() + 30);
 
     const user = await User.create({
       subs_credentials: {
         user_name: subs_credentials.user_name,
         password: hashedPassword
       },
-      plan,  // Use root level value
-      plan_expiry: new Date(plan_expiry), // Use root level value
-      devices: devices || [],
+      plan_expiry: initialExpiry,
       isAdmin,
-      other_preferences: {}
+      devices: []
     });
+
 
     return NextResponse.json({
       _id: user._id,
-      subs_credentials: {
-        user_name: user.subs_credentials.user_name
-      },
-      plan: user.plan, // <-- Return from root
-      plan_expiry: user.plan_expiry // <-- Return from root
+      user_name: user.subs_credentials.user_name,
+      plan_expiry: user.plan_expiry
     });
 
   } catch (error) {
@@ -81,15 +79,16 @@ export async function GET(req: Request) {
 
   try {
     const users = await User.find()
-      .select('-subs_credentials.password -__v')
+      .select('-subs_credentials.password -__v -payment')
       .lean();
 
     return NextResponse.json(users.map(user => ({
-      ...user,
-      other_preferences: {
-        ...user.other_preferences,
-        plan_expiry: user.other_preferences.plan_expiry.toISOString()
-      }
+      _id: user._id,
+      username: user.subs_credentials.user_name,
+      plan_expiry: user.plan_expiry?.toISOString(),
+      devices: user.devices,
+      isAdmin: user.isAdmin,
+      created_at: user.createdAt.toISOString()
     })));
 
   } catch (error) {
