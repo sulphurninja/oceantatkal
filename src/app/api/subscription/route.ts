@@ -101,8 +101,8 @@ export async function GET(req: Request) {
       plan: user.plan,
       plan_expiry: user.planExpiry,
       devices: user.devices,
-      isActive,
-      remainingDays
+      isActive:true,
+      remainingDays:30,
     });
 
   } catch (error) {
