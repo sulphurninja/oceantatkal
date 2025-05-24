@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   await connectDB();
 
   try {
-    const { username, password, deviceId } = await req.json();
+    const { username, password, device_id } = await req.json();
     const user = await User.findOne({ 'subs_credentials.user_name': username });
 
     if (!user) {
