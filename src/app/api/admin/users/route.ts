@@ -50,12 +50,11 @@ export async function POST(req: Request) {
         user_name: subs_credentials.user_name,
         password: hashedPassword
       },
-      other_preferences: {
-        plan: other_preferences.plan,
-        plan_expiry: new Date(other_preferences.plan_expiry)
-      },
+      plan: other_preferences.plan, // <-- Now at root
+      plan_expiry: new Date(other_preferences.plan_expiry), // <-- Now at root
       devices: devices || [],
-      isAdmin
+      isAdmin,
+      other_preferences: {} // <-- Keep empty or add non-plan preferences
     });
 
     return NextResponse.json({
@@ -63,11 +62,8 @@ export async function POST(req: Request) {
       subs_credentials: {
         user_name: user.subs_credentials.user_name
       },
-      other_preferences: {
-        plan: user.other_preferences.plan,
-        plan_expiry: user.other_preferences.plan_expiry
-      },
-      devices: user.devices
+      plan: user.plan, // <-- Return from root
+      plan_expiry: user.plan_expiry // <-- Return from root
     });
 
   } catch (error) {
