@@ -120,10 +120,10 @@ export default function UserDialog({ open, onOpenChange, onSuccess, user }: User
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar
+              <Calendar
                   mode="single"
-                  selected={watch('plan_expiry')} {/* UPDATED PATH */}
-                  onSelect={(date) => setValue('plan_expiry', date || new Date())} {/* UPDATED PATH */}
+                  selected={watch('plan_expiry')}
+                  onSelect={(date) => setValue('plan_expiry', date || new Date())}
                 />
               </PopoverContent>
             </Popover>
