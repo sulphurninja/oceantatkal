@@ -1,7 +1,24 @@
 import connectDB from '@/lib/mongoose';
 import User from '@/models/User';
 import bcrypt from 'bcryptjs';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// Handle OPTIONS requests first
+async function handleOptions(request: NextRequest) {
+  return new NextResponse(null, {
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'application/json'
+    },
+    status: 204
+  });
+}
 
 export async function POST(req: NextRequest) {
   const { username, password, deviceId } = await req.json();
@@ -38,20 +55,25 @@ export async function POST(req: NextRequest) {
       }), { status: 403 });
     }
 
-    return new Response(JSON.stringify({
+    return new NextResponse(JSON.stringify({
       plan: user.plan || 'A',
       plan_expiry: user.plan_expiry || new Date().toISOString(),
-      other_preferences: {
-        plan: user.other_preferences?.plan || 'A',
-        plan_expiry: user.other_preferences?.plan_expiry || new Date().toISOString()
+    }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders
       }
-    }), { status: 200 });
+    });
 
   } catch (error) {
     console.error('Login error:', error);
-    return new Response(JSON.stringify({
+    return new NextResponse(JSON.stringify({
       code: 'SERVER_ERROR',
       error: 'Internal server error'
-    }), { status: 500 });
+    }), {
+      status: 500,
+      headers: corsHeaders
+    });
   }
 }
