@@ -4,8 +4,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const subscriptionSchema = z.object({
-  user_name: z.string().min(3),
-  device_id: z.string()
+  username: z.string().min(3),
 });
 
 export async function GET(req: Request) {
@@ -22,8 +21,8 @@ export async function GET(req: Request) {
       );
     }
 
-    const { user_name, device_id } = validation.data;
-    const user = await User.findOne({ 'subs_credentials.user_name': user_name });
+    const { username} = validation.data;
+    const user = await User.findOne({ 'subs_credentials.user_name': username });
 
     if (!user) {
       return NextResponse.json(
@@ -32,13 +31,7 @@ export async function GET(req: Request) {
       );
     }
 
-    // Verify device and subscription
-    if (!user.devices.includes(device_id)) {
-      return NextResponse.json(
-        { error: 'Device not authorized' },
-        { status: 403 }
-      );
-    }
+
 
     const isActive = user.plan_expiry > new Date();
     const remainingDays = Math.ceil(
