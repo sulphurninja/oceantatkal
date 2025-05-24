@@ -16,11 +16,10 @@ const userSchema = z.object({
     user_name: z.string().min(3),
     password: z.string().min(6)
   }),
-  other_preferences: z.object({
-    plan: z.enum(['free', 'basic', 'premium']),
-    plan_expiry: z.date()
-  }),
-  devices: z.string().optional()
+  plan: z.enum(['free', 'basic', 'premium']), // MOVED TO ROOT
+  plan_expiry: z.date(),                      // MOVED TO ROOT
+  devices: z.string().optional(),
+  other_preferences: z.object({}).optional()  // NOW EMPTY
 });
 
 interface UserDialogProps {
@@ -31,18 +30,17 @@ interface UserDialogProps {
 }
 
 export default function UserDialog({ open, onOpenChange, onSuccess, user }: UserDialogProps) {
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
+   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
     resolver: zodResolver(userSchema),
     defaultValues: {
       subs_credentials: {
         user_name: user?.subs_credentials?.user_name || '',
         password: ''
       },
-      other_preferences: {
-        plan: user?.other_preferences?.plan || 'free',
-        plan_expiry: user?.other_preferences?.plan_expiry || new Date()
-      },
-      devices: user?.devices?.join(', ') || ''
+      plan: user?.plan || 'free',                   // MOVED TO ROOT
+      plan_expiry: user?.plan_expiry || new Date(),  // MOVED TO ROOT
+      devices: user?.devices?.join(', ') || '',
+      other_preferences: {}                         // EMPTY
     }
   });
 
@@ -57,10 +55,7 @@ export default function UserDialog({ open, onOpenChange, onSuccess, user }: User
         body: JSON.stringify({
           ...data,
           devices: data.devices?.split(',').map(d => d.trim()) || [],
-          other_preferences: {
-            ...data.other_preferences,
-            plan_expiry: data.other_preferences.plan_expiry.toISOString()
-          }
+          plan_expiry: data.plan_expiry.toISOString() // DIRECT ACCESS
         })
       });
 
@@ -121,14 +116,14 @@ export default function UserDialog({ open, onOpenChange, onSuccess, user }: User
               <PopoverTrigger asChild>
                 <Button variant="outline" className="w-full">
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(watch('other_preferences.plan_expiry'), 'PPP')}
+                  {format(watch('plan_expiry'), 'PPP')}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
                 <Calendar
                   mode="single"
-                  selected={watch('other_preferences.plan_expiry')}
-                  onSelect={(date) => setValue('other_preferences.plan_expiry', date || new Date())}
+                  selected={watch('plan_expiry')} {/* UPDATED PATH */}
+                  onSelect={(date) => setValue('plan_expiry', date || new Date())} {/* UPDATED PATH */}
                 />
               </PopoverContent>
             </Popover>
