@@ -6,74 +6,84 @@ import { NextRequest, NextResponse } from 'next/server';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-// Handle OPTIONS requests first
-async function handleOptions(request: NextRequest) {
-  return new NextResponse(null, {
-    headers: {
-      ...corsHeaders,
-      'Content-Type': 'application/json'
-    },
-    status: 204
-  });
-}
-
 export async function POST(req: NextRequest) {
-  const { username, password, deviceId } = await req.json();
-
   try {
-    const user = await User.findOne({
-      'subs_credentials.user_name': username
-    });
+    const { username, password, deviceId } = await req.json();
 
+    // Connect to DB explicitly (in case connection drops)
+    await connectDB();
+
+    // 1. Find user with proper null check
+    const user = await User.findOne({ 'subs_credentials.user_name': username });
     if (!user) {
-      return new Response(JSON.stringify({
-        code: 'INVALID_CREDENTIALS',
-        error: 'User not found'
-      }), { status: 401 });
+      console.log('User not found:', username);
+      return NextResponse.json(
+        { code: 'INVALID_CREDENTIALS', error: 'User not found' },
+        { status: 401, headers: corsHeaders }
+      );
     }
 
+    // 2. Compare passwords safely
     const validPass = await bcrypt.compare(
       password,
       user.subs_credentials.password
-    );
+    ).catch((bcryptError) => {
+      console.error('Bcrypt compare error:', bcryptError);
+      return false;
+    });
 
     if (!validPass) {
-      return new Response(JSON.stringify({
-        code: 'INVALID_CREDENTIALS',
-        error: 'Invalid password'
-      }), { status: 401 });
+      console.log('Invalid password for user:', username);
+      return NextResponse.json(
+        { code: 'INVALID_CREDENTIALS', error: 'Invalid password' },
+        { status: 401, headers: corsHeaders }
+      );
     }
 
-    // Device check
-    if (!user.devices.includes(deviceId)) {
-      return new Response(JSON.stringify({
-        code: 'DEVICE_MISMATCH',
-        error: 'Device not registered'
-      }), { status: 403 });
+    // 3. Validate device ID format
+    if (!user.devices.some(d => d.trim() === deviceId?.trim())) {
+      console.log('Device mismatch:', deviceId, 'User devices:', user.devices);
+      return NextResponse.json(
+        { code: 'DEVICE_MISMATCH', error: 'Device not registered' },
+        { status: 403, headers: corsHeaders }
+      );
     }
 
-    return new NextResponse(JSON.stringify({
-      plan: user.plan || 'A',
-      plan_expiry: user.plan_expiry || new Date().toISOString(),
-    }), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        ...corsHeaders
-      }
-    });
+    // 4. Handle nested expiry date safely
+    const planExpiry = user.other_preferences?.plan_expiry
+      ? new Date(user.other_preferences.plan_expiry).toISOString()
+      : new Date().toISOString();
+
+    return NextResponse.json(
+      {
+        plan: user.plan || 'free',
+        plan_expiry: planExpiry,
+        other_preferences: user.other_preferences
+      },
+      { status: 200, headers: corsHeaders }
+    );
 
   } catch (error) {
-    console.error('Login error:', error);
-    return new NextResponse(JSON.stringify({
-      code: 'SERVER_ERROR',
-      error: 'Internal server error'
-    }), {
-      status: 500,
-      headers: corsHeaders
+    // Improved error logging
+    console.error('Server error details:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : null,
+      timestamp: new Date().toISOString()
     });
+
+    return NextResponse.json(
+      { code: 'SERVER_ERROR', error: 'Internal server error' },
+      { status: 500, headers: corsHeaders }
+    );
   }
+}
+
+export async function OPTIONS() {
+  return NextResponse.json(null, {
+    status: 204,
+    headers: corsHeaders
+  });
 }
