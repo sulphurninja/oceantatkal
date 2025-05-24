@@ -89,10 +89,10 @@ export async function GET(req: Request) {
       );
     }
 
-    const isActive = user.plan_expiry > new Date();
+    const isActive = user.planExpiry > new Date();
     const remainingDays = isActive
       ? Math.ceil(
-          (user.plan_expiry.getTime() - Date.now()) /
+          (user.planExpiry.getTime() - Date.now()) /
           (1000 * 60 * 60 * 24)
         )
       : 0;
