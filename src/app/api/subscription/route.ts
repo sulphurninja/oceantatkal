@@ -38,7 +38,7 @@ export async function GET(req: Request) {
     // Critical fix: Handle missing/invalid expiry dates
     if (!user.plan_expiry || !(user.plan_expiry instanceof Date)) {
       return NextResponse.json({
-        valid: false,
+        isActive: false,
         error: "No active subscription",
         expiry: null,
         remaining_days: 0
@@ -53,7 +53,7 @@ export async function GET(req: Request) {
       : 0;
 
     return NextResponse.json({
-      valid: isActive,
+      isActive: isActive,
       expiry: expiryDate.toISOString(),
       remaining_days: remainingDays
     });
