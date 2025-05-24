@@ -4,17 +4,17 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import connectDB from '@/lib/mongoose';
 
+// AFTER ✅
 const userSchema = z.object({
   subs_credentials: z.object({
     user_name: z.string().min(3),
     password: z.string().min(6)
   }),
-  other_preferences: z.object({
-    plan: z.enum(['free', 'basic', 'premium']),
-    plan_expiry: z.string().datetime()
-  }),
+  plan: z.enum(['free', 'basic', 'premium']),      // Add to root level
+  plan_expiry: z.string().datetime(),              // Add to root level
   devices: z.array(z.string()).optional(),
-  isAdmin: z.boolean().optional().default(false)
+  isAdmin: z.boolean().optional().default(false),
+  other_preferences: z.object({}).optional()       // Mark as optional
 });
 
 export async function POST(req: Request) {
@@ -30,7 +30,8 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    const { subs_credentials, other_preferences, devices, isAdmin } = validation.data;
+    // AFTER ✅
+    const { subs_credentials, plan, plan_expiry, devices, isAdmin } = validation.data;
 
     const exists = await User.findOne({
       'subs_credentials.user_name': subs_credentials.user_name
@@ -50,11 +51,11 @@ export async function POST(req: Request) {
         user_name: subs_credentials.user_name,
         password: hashedPassword
       },
-      plan: other_preferences.plan, // <-- Now at root
-      plan_expiry: new Date(other_preferences.plan_expiry), // <-- Now at root
+      plan,  // Use root level value
+      plan_expiry: new Date(plan_expiry), // Use root level value
       devices: devices || [],
       isAdmin,
-      other_preferences: {} // <-- Keep empty or add non-plan preferences
+      other_preferences: {}
     });
 
     return NextResponse.json({
