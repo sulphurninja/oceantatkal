@@ -35,13 +35,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // Calculate expiry date
-    const expiryDate = new Date();
-    expiryDate.setMonth(expiryDate.getMonth() + duration);
-
-    // Update user's subscription
-    user.other_preferences.plan = plan;
-    user.other_preferences.plan_expiry = expiryDate;
+    // Update root-level fields
+    user.plan = plan;
+    user.plan_expiry = new Date();
+    user.plan_expiry.setMonth(user.plan_expiry.getMonth() + duration);
 
     // Track payment details
     user.payment = {
@@ -54,10 +51,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      other_preferences: {
-        plan: user.other_preferences.plan,
-        plan_expiry: user.other_preferences.plan_expiry
-      }
+      plan: user.plan,
+      plan_expiry: user.plan_expiry
     });
 
   } catch (error) {
@@ -68,7 +63,6 @@ export async function POST(req: Request) {
     );
   }
 }
-
 
 export async function GET(req: Request) {
   await connectDB();
@@ -86,7 +80,7 @@ export async function GET(req: Request) {
 
     const user = await User.findOne({
       'subs_credentials.user_name': user_name
-    }).select('other_preferences devices');
+    }).select('plan plan_expiry devices');
 
     if (!user) {
       return NextResponse.json(
@@ -95,19 +89,17 @@ export async function GET(req: Request) {
       );
     }
 
-    const isActive = user.other_preferences.plan_expiry > new Date();
+    const isActive = user.plan_expiry > new Date();
     const remainingDays = isActive
       ? Math.ceil(
-          (user.other_preferences.plan_expiry.getTime() - Date.now()) /
+          (user.plan_expiry.getTime() - Date.now()) /
           (1000 * 60 * 60 * 24)
         )
       : 0;
 
     return NextResponse.json({
-      other_preferences: {
-        plan: user.other_preferences.plan,
-        plan_expiry: user.other_preferences.plan_expiry,
-      },
+      plan: user.plan,
+      plan_expiry: user.plan_expiry,
       devices: user.devices,
       isActive,
       remainingDays
