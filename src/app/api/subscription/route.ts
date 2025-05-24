@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const subscriptionSchema = z.object({
-  user_name: z.string().min(3),
+  username: z.string().min(3),
   plan: z.enum(['free', 'basic', 'premium']),
   duration: z.number().min(1).max(12),
   payment_method: z.enum(['stripe', 'razorpay']),
@@ -25,9 +25,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const { user_name, plan, duration, payment_method, payment_id } = validation.data;
+    const { username, plan, duration, payment_method, payment_id } = validation.data;
 
-    const user = await User.findOne({ 'subs_credentials.user_name': user_name });
+    const user = await User.findOne({ 'subs_credentials.user_name': username });
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -69,17 +69,17 @@ export async function GET(req: Request) {
 
   try {
     const { searchParams } = new URL(req.url);
-    const user_name = searchParams.get('user_name');
+    const username = searchParams.get('username');
 
-    if (!user_name) {
+    if (!username) {
       return NextResponse.json(
-        { error: 'user_name parameter is required' },
+        { error: 'username parameter is required' },
         { status: 400 }
       );
     }
 
     const user = await User.findOne({
-      'subs_credentials.user_name': user_name
+      'subs_credentials.user_name': username
     }).select('plan plan_expiry devices');
 
     if (!user) {
