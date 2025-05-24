@@ -8,7 +8,7 @@ const subscriptionSchema = z.object({
   device_id: z.string()
 });
 
-export async function POST(req: Request) {
+export async function GET(req: Request) {
   await connectDB();
 
   try {
