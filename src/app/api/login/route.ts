@@ -35,19 +35,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (user.devices.length > 0) {
-      // Check if device is already registered
-      if (!user.devices.includes(device_id)) {
-        return NextResponse.json(
-          { error: 'Device limit reached. Logout from other device first.' },
-          { status: 403 }
-        );
-      }
-    } else {
-      // Add first device
-      user.devices.push(device_id);
-      await user.save();
-    }
+ 
     // Recheck expiry after potential updates
     const isActive = user.plan_expiry > new Date();
     return NextResponse.json({
